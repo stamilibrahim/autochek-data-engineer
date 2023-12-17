@@ -18,7 +18,10 @@ with open(os.path.join(current_dir, QUERY_FILE), 'r') as file:
     # cursor.execute(q)
     df = pd.read_sql_query(q, conn)
 
-print(df)
+output_file = os.path.join(current_dir, 'ouptu.xlsx')
+df.to_excel(output_file, index=False)
 
 conn.commit()
 conn.close()
+
+print("Done.")
