@@ -71,7 +71,7 @@ dpd AS (
 /*
 par days - the number of days the loan was not paid in full
 */
-par_days_amt_at_risk AS (
+par_days_amt_risk AS (
     WITH running_totals AS (
         SELECT
             sd.loan_id,
@@ -91,50 +91,53 @@ par_days_amt_at_risk AS (
             AND pd.payment_num = sd.schedule_num
         -- do not consider future schedules
         WHERE sd.scheduled_date < DATE('now')
-    ),
-
-    raw_data AS (
-        SELECT *,
-        -- amount at risk
-        running_total_expected - running_total_paid AS amount_at_risk,
-        CASE 
-            -- SCENARIO 1: first time payments
-            WHEN prev_date_paid IS NULL 
-            THEN julianday(date_paid) - julianday(scheduled_date) 
-            -- for subsequent payments
-            -- SCENARIO 2: paid on schedule 
-            -- and in full
-            -- no debt days
-            WHEN date_paid = scheduled_date
-            AND running_total_paid >= running_total_expected
-            THEN 0 
-            -- SCENARIO 3: paid later than schedule
-            -- and not from a previous payment
-            -- and in full
-            -- calculate debt days
-            WHEN date_paid > scheduled_date
-            AND date_paid != prev_date_paid
-            AND running_total_paid >= running_total_expected
-            THEN julianday(date_paid) - julianday(scheduled_date)
-            -- SCENARIO 4: paid earlier than schedule (lumpsum)
-            -- and covers this month's expected in full
-            -- no debt days
-            WHEN date_paid == prev_date_paid
-            AND running_total_paid >= running_total_expected
-            THEN 0
-        END AS par_days,
-        -- to get last amount at risk
-        ROW_NUMBER() OVER(PARTITION BY loan_id ORDER BY schedule_num DESC) AS row_num
-        FROM running_totals
     )
 
-    SELECT 
-        loan_id, 
-        SUM(par_days) AS par_days,
-        x.amount_at_risk
-        -- get last amount at risk
-        LEFT JOIN (SELECT loan_id, amount_at_risk FROM par_days) AS x
-            ON x.loan_id = par_days.loan_id
+    SELECT *,
+    -- amount at risk
+    running_total_expected - running_total_paid AS amount_risk,
+    CASE 
+        -- SCENARIO 1: first time payments
+        WHEN prev_date_paid IS NULL 
+        THEN julianday(date_paid) - julianday(scheduled_date) 
+        -- for subsequent payments
+        -- SCENARIO 2: paid on schedule 
+        -- and in full
+        -- no debt days
+        WHEN date_paid = scheduled_date
+        AND running_total_paid >= running_total_expected
+        THEN 0 
+        -- SCENARIO 3: paid later than schedule
+        -- and not from a previous payment
+        -- and in full
+        -- calculate debt days
+        WHEN date_paid > scheduled_date
+        AND date_paid != prev_date_paid
+        AND running_total_paid >= running_total_expected
+        THEN julianday(date_paid) - julianday(scheduled_date)
+        -- SCENARIO 4: paid earlier than schedule (lumpsum)
+        -- and covers this month's expected in full
+        -- no debt days
+        WHEN date_paid == prev_date_paid
+        AND running_total_paid >= running_total_expected
+        THEN 0
+    END AS par_days,
+    -- to get last amount at risk
+    ROW_NUMBER() OVER(PARTITION BY loan_id ORDER BY schedule_num DESC) AS final_schedule_num
+    FROM running_totals
+),
+
+final_par_days AS (
+    SELECT loan_id, SUM(par_days) AS par_days
+    FROM par_days_amt_risk
+    GROUP BY 1
+),
+
+
+final_amt_risk AS (
+    SELECT loan_id, amount_risk 
+    FROM par_days_amt_risk
+    WHERE final_schedule_num = 1 -- point in time, final schedule
 ),
 
 loan_amounts AS (
@@ -188,8 +191,8 @@ loan_data AS (
         dpd.current_days_past_due,
         loan_amounts.total_amount_expected,
         loan_amounts.total_amount_paid,
-        par_days.amout_at_risk,
-        par_days.par_days
+        final_amt_risk.amount_risk as amount_at_risk,
+        final_par_days.par_days
     FROM loans 
     LEFT JOIN borrowers 
         ON borrowers.borrower_id = loans.borrower_id
@@ -197,8 +200,10 @@ loan_data AS (
         ON dpd.loan_id = loans.loan_id
     LEFT JOIN loan_amounts
         ON loan_amounts.loan_id = loans.loan_id
-    LEFT JOIN par_days
-        ON par_days.loan_id = loans.loan_id
+    LEFT JOIN final_par_days
+        ON final_par_days.loan_id = loans.loan_id
+    LEFT JOIN final_amt_risk
+        ON final_amt_risk.loan_id = loans.loan_id
 )
 
 
