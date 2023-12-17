@@ -19,16 +19,42 @@ LOANS_SRC =  'https://drive.google.com/file/d/1Lid1RDMGNpXWv2PyU0Alsv-sSBnkGMuS'
 PAYMENT_SCHEDULES_SRC = 'https://docs.google.com/spreadsheets/d/1LawsJQtLGpO6AQZFDpgSUEn8A_TVFD9I'
 LOAN_PAYMENT_SRC = 'https://drive.google.com/file/d/1qdV_WcVmvo7VsyxJxfU8RXpdOgKZ7V3A' 
 
+BORROWERS_SCHEMA = {
+    'borrower_id': 'TEXT',
+    'state': 'TEXT',
+    'city': 'TEXT',
+    'zip_code': 'TEXT',
+    'borrower_credit_score': 'TEXT'
+}
+
+LOANS_SCHEMA = {
+    'borrower_id': 'TEXT',
+    'loan_id': 'TEXT',
+    'date_of_release': 'DATE',
+    'term': 'REAL',
+    'interest_rate': 'REAL',
+    'loan_amount': 'REAL',
+    'down_payment': 'REAL',
+    'payment_frequency': 'REAL',
+    'maturity_date': 'DATE',
+}
+
+PAYMENT_SCHEDULES_SCHEMA = {
+    'loan_id': 'TEXT',
+    'schedule_id': 'TEXT',
+    'expected_payment_date': 'DATE',
+    'expected_payment_amount': 'REAL',
+}
+
+LOAN_PAYMENT_SCHEMA = {
+    'loan_id': 'TEXT',
+    'payment_id': 'TEXT',
+    'date_paid': 'DATE',
+    'amount_paid': 'REAL',
+}
+
 
 # utility functions
-# def extract_file_id(file_url:str) -> (str,str):
-#     match = re.search(r'([^/]+)/d/([a-zA-Z0-9_-]+)', file_url)
-#     if match:
-#         return match.group(0), match.group(1)
-#     else:
-#         raise ValueError("Invalid file URL")
-
-
 def read_google_sheet(sheet_url: str, sheet_name: str) -> pd.DataFrame:
     gc = gspread.authorize(CREDENTIALS)
     workbook = gc.open_by_url(sheet_url)
@@ -78,8 +104,8 @@ def main():
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS loans (
-            loan_id TEXT PRIMARY KEY,
             borrower_id TEXT
+            loan_id TEXT PRIMARY KEY,
             date_of_release DATE,
             term REAL,
             interest_rate REAL,
@@ -94,8 +120,8 @@ def main():
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS payment_schedules (
-            schedule_id TEXT PRIMARY KEY,
             loan_id TEXT,
+            schedule_id TEXT PRIMARY KEY,
             expected_payment_date DATE,
             expected_payment_amount REAL,
             FOREIGN KEY (loan_id) REFERENCES loans (loan_id)
@@ -105,8 +131,8 @@ def main():
 
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS loan_payments (
-            payment_id TEXT PRIMARY KEY,
             loan_id TEXT,
+            payment_id TEXT PRIMARY KEY,
             date_paid DATE,
             amount_paid REAL,
             FOREIGN KEY (loan_id) REFERENCES loans (loan_id)
@@ -117,21 +143,26 @@ def main():
     # read data from source files
     # 1. borrowers
     borrowers_df = read_google_sheet(sheet_url=BORROWERS_SRC, sheet_name='Sheet1')
+    borrowers_df.columns = BORROWERS_SCHEMA.keys()
     borrowers_df.to_sql('borrowers', conn, if_exists='replace', index=False)
     # 2. loans
     loans_df = read_drive_file(file_url=LOANS_SRC, file_type='csv')
+    loans_df.columns = LOANS_SCHEMA.keys()
     loans_df.to_sql('loans', conn, if_exists='replace', index=False)
     # 3. payment_schedules
-    loans_df = read_drive_file(file_url=PAYMENT_SCHEDULES_SRC, file_type='xlsx')
-    loans_df.to_sql('payment_schedules', conn, if_exists='replace', index=False)
+    payment_schedules_df = read_drive_file(file_url=PAYMENT_SCHEDULES_SRC, file_type='xlsx')
+    payment_schedules_df.columns = PAYMENT_SCHEDULES_SCHEMA.keys()
+    payment_schedules_df.to_sql('payment_schedules', conn, if_exists='replace', index=False)
     # 4. loan_payments
     loan_payments_df = read_drive_file(file_url=LOAN_PAYMENT_SRC, file_type='csv')
+    loan_payments_df.columns = LOAN_PAYMENT_SCHEMA.keys()
+    loan_payments_df['date_paid'] = pd.to_datetime(loan_payments_df['date_paid'], format='%m/%d/%Y')
     loan_payments_df.to_sql('loan_payments', conn, if_exists='replace', index=False)
 
-    # Commit the changes and close the connection
     conn.commit()
     conn.close()
     
     
 if __name__ == '__main__':
     main()
+    print("Done.")

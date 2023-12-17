@@ -15,7 +15,10 @@ cursor = conn.cursor()
 
 with open(os.path.join(current_dir, QUERY_FILE), 'r') as file:
     q = file.read()
+    # cursor.execute(q)
     df = pd.read_sql_query(q, conn)
 
+print(df)
 
+conn.commit()
 conn.close()
