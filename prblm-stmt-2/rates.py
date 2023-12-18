@@ -6,6 +6,7 @@ import pandas as pd
 from datetime import datetime, timedelta
 import sqlite3
 
+# CRON = '0 1,23 * * *'
 CURRENCY_CODES = 'NGN, GHS, KES, UGX, MAD, XOF, EGP'
 
 def create_xecd_client():

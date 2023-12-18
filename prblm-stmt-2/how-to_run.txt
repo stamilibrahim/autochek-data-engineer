@@ -1,0 +1,32 @@
+Setting up
+
+1. Install all dependencies in the Pipfile or requirements.txt
+2. Navigate to the prblm-stmt-2 folder 
+3. In the same folder, create 'xe-cred.json' with the following properties:
+    {
+    "account_api_id": "your_acount_id",
+    "account_api_key": "you_api_key"
+    }
+4. Run Create-db to initalize rates.db with the appropriate schema
+
+Run for windows
+
+1. Open windows task scheduler
+2. Create a basic task with a "Daily" triggger
+3. Daily trigger settings:
+    Set the start date to today.
+    Choose the "Recur every" option and set it to "1" days.
+    Set the "Repeat task every" option to "1" hour and set for a duration of "23" hours.
+    Set the "for a duration of" option to "1" day.
+    Select the "Repeat task every" option and set it to "1" hours.
+    Set the "for a duration of" option to "1" day.
+    Ensure "Enabled" is checked.
+    Click "Next."
+4. Action selection
+
+    Choose "Start a program" as the action and click "Next."
+5. Program/Script:
+    Browse and select the path to your Python executable (python.exe) with the dependencies installed.
+    In the "Add arguments (optional)" field, enter the full of the 'ratea.py' file
+
+For Linux users, use a cron job - 0 1,23 * * *
