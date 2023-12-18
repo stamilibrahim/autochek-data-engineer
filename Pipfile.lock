@@ -1,7 +1,7 @@
 {
     "_meta": {
         "hash": {
-            "sha256": "6e7383fa40921dd07c8b15479fd7c167ee9e70c2a52e8f2deb0c86fdb3db727c"
+            "sha256": "46c87462945df3c5cbdfbb9b26d73d8a36fb850706d47d6edde57ede281fcfee"
         },
         "pipfile-spec": 6,
         "requires": {
@@ -479,6 +479,14 @@
             ],
             "markers": "python_version >= '3.8'",
             "version": "==2.1.0"
+        },
+        "xecd-rates-client": {
+            "hashes": [
+                "sha256:1f11f291ce0acd8afa4efca1adae77c024f3ce387763f4d21091963200ca2fce",
+                "sha256:57f0953a61cb3b72955e42a31c379c144810e7074610ea2703cad279e9fe1d9a"
+            ],
+            "index": "pypi",
+            "version": "==1.0.0"
         }
     },
     "develop": {}

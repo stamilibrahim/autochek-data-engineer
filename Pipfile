@@ -9,6 +9,7 @@ gspread = "*"
 oauth2client = "*"
 pydrive = "*"
 openpyxl = "*"
+xecd-rates-client = "*"
 
 [dev-packages]
 
